@@ -7,11 +7,14 @@ It uses an append-only log and in-memory offset indexing for fast disk loopups.
 
 Instead of scanning the file or loading the entire database into RAM, OffsetDB jumps instantly to the exact byte on the disk to retrieve data.
 
+Interactions are handled through a CLI built in Python.
+
 ## Prerequisites
 
 * **Operating System:** Windows (relies on `winsock2.h` and `Ws2_32.lib`)
 * **Compiler:** A C++17 compliant compiler (e.g., MSVC)
 * **IDE:** Visual Studio (Recommended, uses standard `.sln` / `.vcxproj`)
+* **Python 3.x**
 
 ## Run the Server
 
@@ -23,9 +26,11 @@ Instead of scanning the file or loading the entire database into RAM, OffsetDB j
 
 ## Client Usage
 
-You can interact with OffsetDB using any standard TCP client (like telnet, netcat, or a custom script) by connecting to 127.0.0.1:8080.
+### Start the client
 
-The server accepts raw text strings separated by spaces.
+```bash
+python CLI.py
+```
 
 ### Commands
 
