@@ -37,3 +37,4 @@ python CLI.py
 * **ADD \<key> \<value>**
 * **GET \<key>**
 * **DEL \<key>**
+* **COMPACT**

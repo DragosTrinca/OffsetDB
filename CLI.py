@@ -60,6 +60,10 @@ class OffsetDBCLI(cmd.Cmd):
 
         self._send_command(f"DEL {arg}")
 
+    def do_COMPACT(self, arg):
+        """Remove duplicate or deleted entries from log"""
+        self._send_command("COMPACT")
+
     def do_exit(self, arg):
         """Close client CLI"""
         print("Closing client...")

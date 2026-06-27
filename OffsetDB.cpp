@@ -221,6 +221,10 @@ void HandleClient(SOCKET clientSocket, OffsetDB& db) {
                 else
                     response = "Error: Invalid format. Use: DEL key\n";
             }
+            else if (operation == "COMPACT") {
+                db.Compact();
+                response = "Compact success\n";
+            }
             else {
                 response = "Error: Unknown command\n";
             }
