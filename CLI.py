@@ -40,7 +40,7 @@ class OffsetDBCLI(cmd.Cmd):
 
     def do_ADD(self, arg):
         """Add a new entry\nADD <key> <value>"""
-        if not arg or len(arg.split()) != 2:
+        if not arg or len(arg.split()) < 2:
             print("Invalid format. Use ADD <key> <value>")
             return
         

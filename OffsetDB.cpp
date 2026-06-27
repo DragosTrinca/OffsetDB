@@ -193,7 +193,13 @@ void HandleClient(SOCKET clientSocket, OffsetDB& db) {
             ss >> operation;
 
             if (operation == "ADD") {
-                ss >> key >> value;
+                ss >> key;
+                std::getline(ss, value);
+
+                // Remove starting white spaces
+                while (!value.empty() && value[0] == ' ')
+                    value.erase(0, 1);
+
                 if (!key.empty() && !value.empty()) {
                     db.Add(key, value);
                     response = "OK\n";
