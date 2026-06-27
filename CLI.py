@@ -29,6 +29,12 @@ class OffsetDBCLI(cmd.Cmd):
             if not answer:
                 print("Error: Server has closed the connection")
                 return True
+            
+            print(answer)
+            
+        except (ConnectionAbortedError, ConnectionResetError):
+            print("Lost connection")
+            return True
 
         except Exception as e:
             print(f"Network error: {e}")
