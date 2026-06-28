@@ -133,8 +133,6 @@ public:
 
             db[key] = writePos;
         }
-
-        std::cout << "Thread [" << std::this_thread::get_id() << "] added [" << key << "] -> [" << value << "]\n";
     }
 
     std::string Get(const std::string& key) {
@@ -168,14 +166,12 @@ public:
             size_t commaPos = line.find(',');
             if (commaPos != std::string::npos) {
                 std::string value = line.substr(commaPos + 1);
-                std::cout << "Data loaded from disk for key [" << key << "]\n";
                 return value;
             }
             else
                 return "Error: Data corrupted on disk";
         }
         else {
-            std::cout << "Key [" << key << "] not found\n";
             return "Key not found";
         }
     }
@@ -188,11 +184,9 @@ public:
                 logFile << "DEL " << key << "\n";
                 logFile.flush();
             }
-            std::cout << "Key [" << key << "] deleted\n";
             return "Key deleted";
         }
         else {
-            std::cout << "Key [" << key << "] not found\n";
             return "Key not found";
         }
     }
@@ -225,8 +219,6 @@ void HandleClient(SOCKET clientSocket, OffsetDB& db) {
 
                 if (!command.empty() && command.back() == '\r')
                     command.pop_back();
-
-                std::cout << "Command received: " << command << "\n";
 
                 std::stringstream ss(command);
                 std::string operation, key, value, response;
@@ -272,7 +264,6 @@ void HandleClient(SOCKET clientSocket, OffsetDB& db) {
                 send(clientSocket, response.c_str(), response.size(), 0);
 
             }
-
             
         }
         else if (bytesReceived == 0) {
