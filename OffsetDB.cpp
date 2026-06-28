@@ -12,6 +12,9 @@
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
 #include <atomic>
+#include <queue>
+#include <condition_variable>
+#include <functional>
 
 class OffsetDB {
 private:
@@ -62,7 +65,7 @@ public:
 
         loadFromFile(currentFilename);
 
-        logFile.open(filename, std::ios::app);
+        logFile.open(currentFilename, std::ios::app);
         if (!logFile.is_open())
             std::cerr << "Error: Could not open log file\n";
     }
@@ -255,6 +258,60 @@ void HandleClient(SOCKET clientSocket, OffsetDB& db) {
     closesocket(clientSocket);
 }
 
+class ThreadPool {
+private:
+    std::vector<std::thread> workers;
+    std::queue<std::function<void()>> tasks;
+    std::mutex queueMutex;
+    std::condition_variable condition;
+    bool stop;
+
+public:
+    ThreadPool(size_t threads) : stop(false) {
+        for (size_t i = 0; i < threads; i++) {
+            workers.emplace_back([this] {
+                while (true) {
+                    std::function<void()> task;
+
+                    {
+                        std::unique_lock<std::mutex> lock(this->queueMutex);
+
+                        // Wait for a task or the stop command
+                        this->condition.wait(lock, [this] {
+                            return this->stop || !this->tasks.empty();
+                            });
+
+                        if (this->stop && this->tasks.empty())
+                            return;
+
+                        task = std::move(this->tasks.front());
+                        this->tasks.pop();
+                    }
+
+                    // Execute task
+                    task();
+                }
+                });
+        }
+    }
+
+    void Enqueue(std::function<void()> task) {
+        std::unique_lock<std::mutex> lock(queueMutex);
+        tasks.emplace(std::move(task));
+        condition.notify_one();
+    }
+
+    ~ThreadPool() {
+        std::unique_lock<std::mutex> lock(queueMutex);
+        stop = true;
+        condition.notify_all();
+        for (std::thread& worker : workers) {
+            if (worker.joinable())
+                worker.join();
+        }
+    }
+};
+
 void StartServer(OffsetDB& db) {
     // Initialize winsock
     WSADATA wsaData;
@@ -288,6 +345,9 @@ void StartServer(OffsetDB& db) {
     listen(serverSocket, SOMAXCONN);
     std::cout << "Listening to port 8080\n";
 
+    // Number of threads may be increased
+    ThreadPool pool(8);
+
     // Server main loop
     while (true) {
         SOCKET clientSocket = accept(serverSocket, NULL, NULL);
@@ -295,9 +355,9 @@ void StartServer(OffsetDB& db) {
 
         std::cout << "New client connected\n";
 
-        std::thread clientThread(HandleClient, clientSocket, std::ref(db));
-
-        clientThread.detach();
+        pool.Enqueue([clientSocket, &db]() {
+            HandleClient(clientSocket, db);
+            });
     }
 
     closesocket(serverSocket);
@@ -306,7 +366,7 @@ void StartServer(OffsetDB& db) {
 
 int main()
 {
-    OffsetDB myDb("database_log.txt");
+    OffsetDB myDb("database_log");
     StartServer(myDb);
     return 0;
 }
