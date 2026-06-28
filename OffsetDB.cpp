@@ -137,9 +137,14 @@ public:
         if (it != db.end()) {
             std::streampos pos = it->second;
 
-            std::ifstream inFile(dbFilename);
-            if (!inFile.is_open())
-                std::cerr << "Error: Could not read disk\n";
+            thread_local std::ifstream inFile;
+
+            if (!inFile.is_open()) {
+                inFile.open(dbFilename, std::ios::binary);
+                if (!inFile.is_open())
+                    return "Error: Could not read disk";
+            }
+            else inFile.clear();
 
             inFile.seekg(pos);
 
@@ -153,7 +158,7 @@ public:
                 return value;
             }
             else
-                std::cerr << "Error: Data corrupted on disk\n";
+                return "Error: Data corrupted on disk";
         }
         else {
             std::cout << "Key [" << key << "] not found\n";
