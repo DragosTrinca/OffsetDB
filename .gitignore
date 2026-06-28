@@ -364,3 +364,4 @@ FodyWeavers.xsd
 
 # Database log - auto-generated text file
 database_log.txt
+database_log_v*.txt

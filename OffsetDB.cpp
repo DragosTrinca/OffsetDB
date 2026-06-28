@@ -11,6 +11,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #pragma comment(lib, "Ws2_32.lib")
+#include <atomic>
 
 class OffsetDB {
 private:
@@ -19,7 +20,9 @@ private:
     std::ofstream logFile;
     std::shared_mutex dbMutex;
 
-    std::string dbFilename;
+    std::string baseFilename;
+    std::string currentFilename;
+    std::atomic<int> dbVersion{ 1 };
 
     // Load commands from log file
     void loadFromFile(const std::string& filename) {
@@ -54,9 +57,10 @@ private:
 
 public:
     OffsetDB(const std::string& filename) {
-        dbFilename = filename;
+        baseFilename = filename;
+        currentFilename = baseFilename + "_v1.txt";
 
-        loadFromFile(filename);
+        loadFromFile(currentFilename);
 
         logFile.open(filename, std::ios::app);
         if (!logFile.is_open())
@@ -74,12 +78,14 @@ public:
         if (logFile.is_open())
             logFile.close();
 
-        std::string tempFilename = dbFilename + ".tmp";
-        std::ofstream tempFile(tempFilename);
+        int nextVersion = dbVersion.load() + 1;
+        std::string newFilename = baseFilename + "_v" + std::to_string(nextVersion) + ".txt";
+
+        std::ofstream tempFile(newFilename);
 
         std::unordered_map<std::string, std::streampos> newDb;
 
-        std::ifstream oldFile(dbFilename);
+        std::ifstream oldFile(currentFilename);
 
         for (const auto& pair : db) {
             const std::string key = pair.first;
@@ -104,14 +110,13 @@ public:
         tempFile.close();
         oldFile.close();
 
-        std::filesystem::remove(dbFilename);
-        std::filesystem::rename(tempFilename, dbFilename);
-
-        logFile.open(dbFilename, std::ios::app);
-
+        currentFilename = newFilename;
         db = newDb;
+        dbVersion.store(nextVersion);
 
-        std::cout << "Compact done successfully\n";
+        logFile.open(currentFilename, std::ios::app);
+
+        std::cout << "Compact done. New active file: " << currentFilename << "\n";
     }
 
     void Add(const std::string& key, const std::string& value) {
@@ -138,9 +143,15 @@ public:
             std::streampos pos = it->second;
 
             thread_local std::ifstream inFile;
+            thread_local int localVersion = 0;
 
-            if (!inFile.is_open()) {
-                inFile.open(dbFilename, std::ios::binary);
+            if (!inFile.is_open() || localVersion != dbVersion.load()) {
+                if (inFile.is_open())
+                    inFile.close();
+
+                inFile.open(currentFilename, std::ios::binary);
+                localVersion = dbVersion.load();
+
                 if (!inFile.is_open())
                     return "Error: Could not read disk";
             }
