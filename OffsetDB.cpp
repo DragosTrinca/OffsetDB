@@ -5,6 +5,7 @@
 #include <fstream>
 #include <filesystem>
 #include <mutex>
+#include <shared_mutex>
 #include <thread>
 #include <vector>
 #include <winsock2.h>
@@ -16,7 +17,7 @@ private:
     std::unordered_map<std::string, std::streampos> db;
 
     std::ofstream logFile;
-    std::mutex dbMutex;
+    std::shared_mutex dbMutex;
 
     std::string dbFilename;
 
@@ -68,7 +69,7 @@ public:
     }
 
     void Compact() {
-        std::lock_guard<std::mutex> lock(dbMutex);
+        std::unique_lock<std::shared_mutex> lock(dbMutex);
 
         if (logFile.is_open())
             logFile.close();
@@ -114,7 +115,7 @@ public:
     }
 
     void Add(const std::string& key, const std::string& value) {
-        std::lock_guard<std::mutex> lock(dbMutex);
+        std::unique_lock<std::shared_mutex> lock(dbMutex);
 
         if (logFile.is_open()) {
             std::streampos writePos = logFile.tellp();
@@ -129,7 +130,7 @@ public:
     }
 
     std::string Get(const std::string& key) {
-        std::lock_guard<std::mutex> lock(dbMutex);
+        std::shared_lock<std::shared_mutex> lock(dbMutex);
 
         auto it = db.find(key);
 
@@ -161,7 +162,7 @@ public:
     }
 
     std::string Delete(const std::string& key) {
-        std::lock_guard<std::mutex> lock(dbMutex);
+        std::unique_lock<std::shared_mutex> lock(dbMutex);
 
         if (db.erase(key)) {
             if (logFile.is_open()) {
