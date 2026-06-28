@@ -50,25 +50,25 @@ class OffsetDBCLI(cmd.Cmd):
             print("Invalid format. Use ADD <key> <value>")
             return
         
-        self._send_command(f"ADD {arg}")
+        self._send_command(f"ADD {arg}\n")
  
     def do_GET(self, arg):
         """Return the value assigned to a key\nGET <key>"""
         if not arg or len(arg.split()) != 1:
             print("Invalid format. Use GET <key>")
 
-        self._send_command(f"GET {arg}")
+        self._send_command(f"GET {arg}\n")
 
     def do_DEL(self, arg):
         """Delete an entry from the database\nDEL <key>"""
         if not arg or len(arg.split()) != 1:
             print("Invalid format. Use DEL <key>")
 
-        self._send_command(f"DEL {arg}")
+        self._send_command(f"DEL {arg}\n")
 
     def do_COMPACT(self, arg):
         """Remove duplicate or deleted entries from log"""
-        self._send_command("COMPACT")
+        self._send_command("COMPACT\n")
 
     def do_exit(self, arg):
         """Close client CLI"""

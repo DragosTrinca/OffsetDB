@@ -199,59 +199,88 @@ public:
 };
 
 void HandleClient(SOCKET clientSocket, OffsetDB& db) {
+    // Temporary buffer
+    char buffer[1024] = { 0 };
+
+    // Buffer that persists between recv() calls
+    std::string clientBuffer;
+
     while (true) {
-        char buffer[1024] = { 0 };
-        int bytesReceived = recv(clientSocket, buffer, 1024, 0);
+        // Clear temporary buffer
+        memset(buffer, 0, sizeof(buffer));
+
+        int bytesReceived = recv(clientSocket, buffer, sizeof(buffer) - 1, 0);
 
         if (bytesReceived > 0) {
-            std::string command(buffer, bytesReceived);
-            std::cout << "Command received: " << command << "\n";
+            // Put new data in the buffer
+            clientBuffer.append(buffer, bytesReceived);
 
-            std::stringstream ss(command);
-            std::string operation, key, value, response;
+            // Look for all full commands inside the buffer
+            size_t pos;
+            while ((pos = clientBuffer.find('\n')) != std::string::npos) {
+                std::string command = clientBuffer.substr(0, pos);
 
-            ss >> operation;
+                // Remove command from buffer
+                clientBuffer.erase(0, pos + 1);
 
-            if (operation == "ADD") {
-                ss >> key;
-                std::getline(ss, value);
+                if (!command.empty() && command.back() == '\r')
+                    command.pop_back();
 
-                // Remove starting white spaces
-                while (!value.empty() && value[0] == ' ')
-                    value.erase(0, 1);
+                std::cout << "Command received: " << command << "\n";
 
-                if (!key.empty() && !value.empty()) {
-                    db.Add(key, value);
-                    response = "OK\n";
+                std::stringstream ss(command);
+                std::string operation, key, value, response;
+
+                ss >> operation;
+
+                if (operation == "ADD") {
+                    ss >> key;
+                    std::getline(ss, value);
+
+                    // Remove starting white spaces
+                    while (!value.empty() && value[0] == ' ')
+                        value.erase(0, 1);
+
+                    if (!key.empty() && !value.empty()) {
+                        db.Add(key, value);
+                        response = "OK\n";
+                    }
+                    else
+                        response = "Error: Invalid format. Use: ADD key value\n";
                 }
-                else
-                    response = "Error: Invalid format. Use: ADD key value\n";
+                else if (operation == "GET") {
+                    ss >> key;
+                    if (!key.empty())
+                        response = db.Get(key) + "\n";
+                    else
+                        response = "Error: Invalid format. Use: GET key\n";
+                }
+                else if (operation == "DEL") {
+                    ss >> key;
+                    if (!key.empty())
+                        response = db.Delete(key) + "\n";
+                    else
+                        response = "Error: Invalid format. Use: DEL key\n";
+                }
+                else if (operation == "COMPACT") {
+                    db.Compact();
+                    response = "Compact success\n";
+                }
+                else {
+                    response = "Error: Unknown command\n";
+                }
+                send(clientSocket, response.c_str(), response.size(), 0);
+
             }
-            else if (operation == "GET") {
-                ss >> key;
-                if (!key.empty())
-                    response = db.Get(key) + "\n";
-                else
-                    response = "Error: Invalid format. Use: GET key\n";
-            }
-            else if (operation == "DEL") {
-                ss >> key;
-                if (!key.empty())
-                    response = db.Delete(key) + "\n";
-                else
-                    response = "Error: Invalid format. Use: DEL key\n";
-            }
-            else if (operation == "COMPACT") {
-                db.Compact();
-                response = "Compact success\n";
-            }
-            else {
-                response = "Error: Unknown command\n";
-            }
-            send(clientSocket, response.c_str(), response.size(), 0);
+
+            
+        }
+        else if (bytesReceived == 0) {
+            std::cout << "Client disconnected\n";
+            break;
         }
         else {
-            std::cout << "Client disconnected\n";
+            std::cout << "Client connection error\n";
             break;
         }
     }
