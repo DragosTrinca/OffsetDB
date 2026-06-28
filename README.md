@@ -20,6 +20,12 @@ Interactions are handled through a CLI built in Python.
 * **TCP Stream Buffer Accumulator:** The buffer accumulates fragmented packets and only parses/executes commands when it detects a newline (\n).
 * **Zero Dependencies:** The project is built entirely using C++17 and native Winsock APIs.
 
+## Benchmarks
+
+Performance was measured using a custom multi-threaded Python benchmark script (20 concurrent clients, 500 requests/client). Tested locally on consumer hardware
+
+* **Write Throughput (ADD):** 0.42 seconds (~23,000 requests/second)
+* **Read Throughput (GET):** 0.22 seconds (~44,000 requests/second)
 
 ## Prerequisites
 
